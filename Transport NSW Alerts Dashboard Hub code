@@ -1,0 +1,883 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Uniguest HUB - Transport NSW Dashboard</title>
+
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background: #f4f6f9;
+    margin: 20px;
+    color: #263238;
+}
+
+.dashboard {
+    max-width: 1500px;
+    margin: auto;
+}
+
+h2 {
+    color: #173b63;
+    font-size: 32px;
+}
+
+h3 {
+    color: #173b63;
+    margin-top: 30px;
+}
+
+.summary {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    margin: 20px 0;
+}
+
+.summary-card {
+    background: white;
+    padding: 18px;
+    border-radius: 8px;
+    flex: 1;
+    min-width: 140px;
+    box-shadow: 0 2px 5px #ddd;
+}
+
+.summary-card strong {
+    display: block;
+    font-size: 26px;
+    margin-top: 8px;
+}
+
+.filters {
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin: 20px 0;
+}
+
+input, select {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+input {
+    flex: 1;
+    min-width: 180px;
+}
+
+.table-container {
+    overflow-x: auto;
+    background: white;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 850px;
+}
+
+th {
+    background: #173b63;
+    color: white;
+    padding: 13px;
+    text-align: left;
+}
+
+td {
+    padding: 12px;
+    border-bottom: 1px solid #ddd;
+    vertical-align: top;
+}
+
+tbody tr:hover {
+    background: #f5f9ff;
+}
+
+.badge {
+    padding: 5px 10px;
+    border-radius: 15px;
+    font-size: 12px;
+    font-weight: bold;
+    display: inline-block;
+}
+
+.DETOUR, .DISRUPTED {
+    background: #fff0d5;
+    color: #a45b00;
+}
+
+.DELAY, .UPCOMING {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.NO_SERVICE, .STOP_MOVED, .EXPIRED {
+    background: #f8d7da;
+    color: #a71d2a;
+}
+
+.REDUCED_SERVICE {
+    background: #e5e0fa;
+    color: #593b9b;
+}
+
+.NORMAL, .MONITORING, .ACTIVE {
+    background: #d4edda;
+    color: #155724;
+}
+
+button {
+    cursor: pointer;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 4px;
+    background: #1769aa;
+    color: white;
+}
+
+button:hover {
+    background: #104b7a;
+}
+
+.route-button {
+    background: transparent;
+    color: #1769aa;
+    font-weight: bold;
+    padding: 2px;
+}
+
+.description-row {
+    display: none;
+    background: #f0f6fc;
+}
+
+.description-box {
+    padding: 15px;
+    line-height: 1.6;
+}
+
+a {
+    color: #1769aa;
+}
+
+.empty {
+    text-align: center;
+    padding: 25px;
+}
+
+.footer {
+    margin-top: 15px;
+    color: #666;
+    font-size: 12px;
+}
+</style>
+
+</head>
+<body>
+
+<div class="dashboard">
+
+<h2>Uniguest HUB - Bus Service Alerts Dashboard</h2>
+
+<div id="feedInfo"></div>
+
+<div class="summary">
+    <div class="summary-card">
+        Total Alerts
+        <strong id="totalAlerts">0</strong>
+    </div>
+    <div class="summary-card">
+        Active Alerts
+        <strong id="activeAlerts">0</strong>
+    </div>
+    <div class="summary-card">
+        Detours
+        <strong id="totalDetours">0</strong>
+    </div>
+    <div class="summary-card">
+        Delays
+        <strong id="totalDelays">0</strong>
+    </div>
+    <div class="summary-card">
+        Other Alerts
+        <strong id="totalOther">0</strong>
+    </div>
+</div>
+
+<h3>Route Monitoring Dashboard</h3>
+
+<div class="table-container">
+<table>
+<thead>
+<tr>
+    <th>Route ID</th>
+    <th>Active Alerts</th>
+    <th>Detours</th>
+    <th>Affected Stops</th>
+    <th>Direction 0</th>
+    <th>Direction 1</th>
+    <th>Status</th>
+</tr>
+</thead>
+<tbody id="routeMonitoring"></tbody>
+</table>
+</div>
+
+<h3>Route-specific Alert Summary</h3>
+
+<div class="table-container">
+<table>
+<thead>
+<tr>
+    <th>Route ID</th>
+    <th>Total Alerts</th>
+    <th>Detours</th>
+    <th>Delays</th>
+    <th>Other Alerts</th>
+</tr>
+</thead>
+<tbody id="routeSummary"></tbody>
+</table>
+</div>
+
+<h3>Service Alerts</h3>
+
+<div class="filters">
+
+<input type="text" id="searchInput"
+placeholder="Search alert, route or description...">
+
+<select id="routeFilter">
+<option value="">All Routes</option>
+</select>
+
+<select id="statusFilter">
+<option value="">All Statuses</option>
+<option value="DETOUR">Detour</option>
+<option value="SIGNIFICANT_DELAYS">Delays</option>
+<option value="NO_SERVICE">No Service</option>
+<option value="STOP_MOVED">Stop Moved</option>
+<option value="REDUCED_SERVICE">Reduced Service</option>
+</select>
+
+<button type="button" id="resetButton">
+Reset Filters
+</button>
+
+</div>
+
+<div class="table-container">
+<table>
+<thead>
+<tr>
+<th>Alert</th>
+<th>Routes</th>
+<th>Direction</th>
+<th>Cause</th>
+<th>Effect</th>
+<th>Start</th>
+<th>End</th>
+<th>Details</th>
+</tr>
+</thead>
+<tbody id="alertTable"></tbody>
+</table>
+</div>
+
+<div id="resultCount" class="footer"></div>
+
+</div>
+
+
+<script>
+
+// SAMPLE TRANSPORT NSW DATA
+
+const jsonData = {
+    root: {
+        header: {
+            gtfsRealtimeVersion: "2.0",
+            incrementality: "FULL_DATASET",
+            timestamp: "1793762243"
+        },
+        entity: [{
+            id: "2e27beaf-0c81-5a63-ba14-f6076c0772da",
+            alert: {
+                activePeriod: [{
+                    start: "1793746554",
+                    end: "1793796954"
+                }],
+                informedEntity: [
+                    {
+                        agencyId: "2503",
+                        routeId: "2503_810",
+                        directionId: 1
+                    },
+                    {
+                        agencyId: "2503",
+                        routeId: "2503_7001",
+                        directionId: 1
+                    },
+                    {
+                        agencyId: "2503",
+                        routeId: "2503_810",
+                        directionId: 0
+                    }
+                ],
+                cause: "MAINTENANCE",
+                effect: "DETOUR",
+                url: {
+                    translation: [{
+                        text: "https://transportnsw.info/alerts/details#/ems-81239",
+                        language: "en"
+                    }]
+                },
+                headerText: {
+                    translation: [{
+                        text: "Diversion at Greystanes",
+                        language: "en"
+                    }]
+                },
+                descriptionText: {
+                    translation: [
+                        {
+                            text: "At Greystanes, buses are diverting away from Gardenia Parade near Hyacinth Street due to a fallen power pole.",
+                            language: "en"
+                        },
+                        {
+                            text: "Seven stops are being missed (2145272, 2145291, 2145271, 2145293, 2145270, 2145295 and 2145267).",
+                            language: "en/html"
+                        }
+                    ]
+                }
+            }
+        }]
+    }
+};
+
+
+// HELPER FUNCTIONS
+
+function getTranslation(obj, language) {
+    if (!obj || !obj.translation) return "";
+
+    const lang = language || "en";
+
+    const item = obj.translation.find(
+        t => t.language === lang
+    );
+
+    return item ? item.text : "";
+}
+
+function extractStopIds(description) {
+    const matches = (description || "").match(
+        /\b\d{7}\b/g
+    ) || [];
+
+    return [...new Set(matches)];
+}
+
+function formatDate(timestamp) {
+    if (!timestamp) return "N/A";
+
+    return new Date(Number(timestamp) * 1000)
+        .toLocaleString("en-AU");
+}
+
+function getAlertPeriod(alert, now) {
+    const start = alert.start == null ? null : Number(alert.start);
+    const end = alert.end == null ? null : Number(alert.end);
+
+    if (start !== null && !Number.isFinite(start)) return "UNKNOWN";
+    if (end !== null && !Number.isFinite(end)) return "UNKNOWN";
+
+    if (start !== null && start > now) return "UPCOMING";
+    if (end !== null && end < now) return "EXPIRED";
+
+    if (start === null && end === null) return "UNKNOWN";
+
+    return "ACTIVE";
+}
+
+
+// NORMALISE ALERTS
+
+const alerts = (jsonData.root.entity || [])
+.filter(entity => entity.alert)
+.map(entity => {
+
+    const alert = entity.alert;
+    const informed = alert.informedEntity || [];
+
+    const routes = [...new Set(
+        informed.map(item => item.routeId).filter(Boolean)
+    )];
+
+    const directions = [...new Set(
+        informed.map(item => item.directionId)
+        .filter(value => value !== undefined && value !== null)
+    )];
+
+    const period = (alert.activePeriod || [])[0] || {};
+
+    const htmlDescription =
+        getTranslation(alert.descriptionText, "en/html");
+
+    return {
+        id: entity.id,
+        title: getTranslation(alert.headerText),
+        description:
+            getTranslation(alert.descriptionText, "en") ||
+            htmlDescription,
+        routes: routes,
+        directions: directions,
+        informedEntity: informed,
+        cause: alert.cause || "UNKNOWN",
+        effect: alert.effect || "UNKNOWN",
+        start: period.start,
+        end: period.end,
+        url: getTranslation(alert.url),
+        stopIds: extractStopIds(htmlDescription)
+    };
+});
+
+
+// FEED INFORMATION
+
+const header = jsonData.root.header || {};
+
+document.getElementById("feedInfo").textContent =
+    "GTFS Version: " + (header.gtfsRealtimeVersion || "N/A") +
+    " | Feed: " + (header.incrementality || "N/A") +
+    " | Updated: " + formatDate(header.timestamp);
+
+
+// ROUTE FILTER
+
+const allRoutes = [...new Set(
+    alerts.flatMap(alert => alert.routes)
+)].sort();
+
+const routeFilter = document.getElementById("routeFilter");
+
+allRoutes.forEach(route => {
+    const option = document.createElement("option");
+    option.value = route;
+    option.textContent = route;
+    routeFilter.appendChild(option);
+});
+
+
+// SUMMARY CARDS
+
+function updateSummary(data) {
+
+    const now = Math.floor(Date.now() / 1000);
+
+    const active = data.filter(
+        alert => getAlertPeriod(alert, now) === "ACTIVE"
+    );
+
+    document.getElementById("totalAlerts").textContent = data.length;
+    document.getElementById("activeAlerts").textContent = active.length;
+
+    document.getElementById("totalDetours").textContent =
+        data.filter(a => a.effect === "DETOUR").length;
+
+    document.getElementById("totalDelays").textContent =
+        data.filter(a => a.effect === "SIGNIFICANT_DELAYS").length;
+
+    document.getElementById("totalOther").textContent =
+        data.filter(a =>
+            a.effect !== "DETOUR" &&
+            a.effect !== "SIGNIFICANT_DELAYS"
+        ).length;
+}
+
+</script>
+
+<script>
+
+// ROUTE MONITORING
+
+function renderRouteMonitoring() {
+
+    const routeStats = {};
+    const now = Math.floor(Date.now() / 1000);
+
+    alerts.forEach(alert => {
+
+        if (getAlertPeriod(alert, now) !== "ACTIVE") return;
+
+        alert.routes.forEach(route => {
+
+            if (!routeStats[route]) {
+                routeStats[route] = {
+                    total: 0,
+                    detours: 0,
+                    stops: new Set(),
+                    direction0: 0,
+                    direction1: 0
+                };
+            }
+
+            const stats = routeStats[route];
+
+            stats.total++;
+
+            if (alert.effect === "DETOUR") {
+                stats.detours++;
+            }
+
+            alert.stopIds.forEach(stop => stats.stops.add(stop));
+
+            const directions = new Set(
+                alert.informedEntity
+                .filter(item => item.routeId === route)
+                .map(item => Number(item.directionId))
+            );
+
+            if (directions.has(0)) stats.direction0++;
+            if (directions.has(1)) stats.direction1++;
+        });
+    });
+
+    const tbody = document.getElementById("routeMonitoring");
+    tbody.replaceChildren();
+
+    const routes = Object.keys(routeStats).sort();
+
+    if (!routes.length) {
+        tbody.innerHTML =
+            '<tr><td colspan="7" class="empty">No active route alerts</td></tr>';
+        return;
+    }
+
+    routes.forEach(route => {
+
+        const s = routeStats[route];
+        const row = document.createElement("tr");
+
+        const values = [
+            route,
+            s.total,
+            s.detours,
+            s.stops.size,
+            s.direction0,
+            s.direction1
+        ];
+
+        values.forEach((value, index) => {
+
+            const cell = document.createElement("td");
+
+            if (index === 0) {
+                const button = document.createElement("button");
+                button.className = "route-button";
+                button.textContent = value;
+
+                button.onclick = () => {
+                    routeFilter.value = route;
+                    filterAlerts();
+                };
+
+                cell.appendChild(button);
+            } else {
+                cell.textContent = value;
+            }
+
+            row.appendChild(cell);
+        });
+
+        const status = document.createElement("td");
+        const badge = document.createElement("span");
+
+        badge.className = "badge " +
+            (s.detours ? "DISRUPTED" : "MONITORING");
+
+        badge.textContent =
+            s.detours ? "DISRUPTED" : "MONITORING";
+
+        status.appendChild(badge);
+        row.appendChild(status);
+
+        tbody.appendChild(row);
+    });
+}
+
+
+// ROUTE SUMMARY
+
+function renderRouteSummary() {
+
+    const counts = {};
+
+    alerts.forEach(alert => {
+
+        alert.routes.forEach(route => {
+
+            if (!counts[route]) {
+                counts[route] = {
+                    total: 0,
+                    detours: 0,
+                    delays: 0,
+                    other: 0
+                };
+            }
+
+            const s = counts[route];
+
+            s.total++;
+
+            if (alert.effect === "DETOUR") {
+                s.detours++;
+            } else if (alert.effect === "SIGNIFICANT_DELAYS") {
+                s.delays++;
+            } else {
+                s.other++;
+            }
+        });
+    });
+
+    const tbody = document.getElementById("routeSummary");
+    tbody.replaceChildren();
+
+    Object.keys(counts).sort().forEach(route => {
+
+        const s = counts[route];
+        const row = document.createElement("tr");
+
+        [route, s.total, s.detours, s.delays, s.other]
+        .forEach((value, index) => {
+
+            const cell = document.createElement("td");
+
+            if (index === 0) {
+                const button = document.createElement("button");
+                button.className = "route-button";
+                button.textContent = value;
+
+                button.onclick = () => {
+                    routeFilter.value = route;
+                    filterAlerts();
+                };
+
+                cell.appendChild(button);
+            } else {
+                cell.textContent = value;
+            }
+
+            row.appendChild(cell);
+        });
+
+        tbody.appendChild(row);
+    });
+}
+
+
+// ALERT TABLE
+
+function renderTable(data) {
+
+    const tbody = document.getElementById("alertTable");
+    tbody.replaceChildren();
+
+    const now = Math.floor(Date.now() / 1000);
+
+    data.forEach(alert => {
+
+        const period = getAlertPeriod(alert, now);
+        const mainRow = document.createElement("tr");
+
+        const values = [
+            alert.title,
+            alert.routes.join(", ") || "All routes",
+            alert.directions.join(", "),
+            alert.cause,
+            alert.effect,
+            formatDate(alert.start),
+            formatDate(alert.end)
+        ];
+
+        values.forEach((value, index) => {
+
+            const cell = document.createElement("td");
+
+            if (index === 4) {
+                const badge = document.createElement("span");
+                badge.className = "badge " +
+                    (value === "DETOUR" ? "DETOUR" : "NORMAL");
+                badge.textContent = value;
+                cell.appendChild(badge);
+            } else {
+                cell.textContent = value;
+            }
+
+            mainRow.appendChild(cell);
+        });
+
+        const detailCell = document.createElement("td");
+        const button = document.createElement("button");
+
+        button.textContent = "View Details";
+        detailCell.appendChild(button);
+        mainRow.appendChild(detailCell);
+
+        const detailRow = document.createElement("tr");
+        detailRow.className = "description-row";
+
+        const descriptionCell = document.createElement("td");
+        descriptionCell.colSpan = 8;
+
+        const box = document.createElement("div");
+        box.className = "description-box";
+
+        const description = document.createElement("p");
+        description.textContent = alert.description ||
+            "No description available.";
+
+        box.appendChild(description);
+
+        const routes = document.createElement("p");
+        routes.textContent =
+            "Affected Routes: " + alert.routes.join(", ");
+
+        box.appendChild(routes);
+
+        const stops = document.createElement("p");
+        stops.textContent =
+            "Affected Stop IDs: " +
+            (alert.stopIds.join(", ") || "Not specified");
+
+        box.appendChild(stops);
+
+        if (alert.url) {
+            try {
+                const url = new URL(alert.url);
+
+                if (url.protocol === "https:" &&
+                    url.hostname === "transportnsw.info") {
+
+                    const link = document.createElement("a");
+                    link.href = url.href;
+                    link.target = "_blank";
+                    link.rel = "noopener noreferrer";
+                    link.textContent = "View Transport NSW Alert";
+
+                    box.appendChild(link);
+                }
+            } catch (error) {}
+        }
+
+        descriptionCell.appendChild(box);
+        detailRow.appendChild(descriptionCell);
+
+        button.onclick = () => {
+
+            const open = detailRow.style.display === "table-row";
+
+            detailRow.style.display = open ? "none" : "table-row";
+            button.textContent = open ? "View Details" : "Hide Details";
+        };
+
+        tbody.appendChild(mainRow);
+        tbody.appendChild(detailRow);
+    });
+
+    if (!data.length) {
+        tbody.innerHTML =
+            '<tr><td colspan="8" class="empty">No matching alerts found.</td></tr>';
+    }
+
+    document.getElementById("resultCount").textContent =
+        "Showing " + data.length + " of " + alerts.length + " alerts";
+
+    updateSummary(data);
+}
+
+
+// FILTERS
+
+function filterAlerts() {
+
+    const search = document.getElementById("searchInput")
+        .value.toLowerCase();
+
+    const route = routeFilter.value;
+
+    const status = document.getElementById("statusFilter").value;
+
+    const filtered = alerts.filter(alert => {
+
+        const text = [
+            alert.title,
+            alert.description,
+            alert.cause,
+            alert.effect,
+            alert.routes.join(" ")
+        ].join(" ").toLowerCase();
+
+        return text.includes(search) &&
+            (!route || alert.routes.includes(route)) &&
+            (!status || alert.effect === status);
+    });
+
+    renderTable(filtered);
+}
+
+
+// EVENT LISTENERS
+
+document.getElementById("searchInput")
+    .addEventListener("input", filterAlerts);
+
+routeFilter.addEventListener("change", filterAlerts);
+
+document.getElementById("statusFilter")
+    .addEventListener("change", filterAlerts);
+
+document.getElementById("resetButton")
+    .addEventListener("click", () => {
+
+        document.getElementById("searchInput").value = "";
+        routeFilter.value = "";
+        document.getElementById("statusFilter").value = "";
+
+        filterAlerts();
+    });
+
+
+// INITIAL DISPLAY
+
+renderTable(alerts);
+renderRouteSummary();
+renderRouteMonitoring();
+
+
+// REFRESH STATUS EVERY MINUTE
+
+setInterval(() => {
+    filterAlerts();
+    renderRouteMonitoring();
+}, 60000);
+
+</script>
+
+
+</body>
+</html>
